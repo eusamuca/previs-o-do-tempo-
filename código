@@ -1,0 +1,183 @@
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+class Previsao {
+  final String data;
+  final double temperatura;
+  final double umidade;
+  final double luminosidade;
+  final double vento;
+  final double chuva;
+  final String unidade;
+
+  Previsao({
+    required this.data,
+    required this.temperatura,
+    required this.umidade,
+    required this.luminosidade,
+    required this.vento,
+    required this.chuva,
+    required this.unidade,
+  });
+
+  factory Previsao.fromJson(Map<String, dynamic> json) {
+    return Previsao(
+      data: json['data'],
+      temperatura: json['temperatura'].toDouble(),
+      umidade: json['umidade'].toDouble(),
+      luminosidade: json['luminosidade'].toDouble(),
+      vento: json['vento'].toDouble(),
+      chuva: json['chuva'].toDouble(),
+      unidade: json['unidade'],
+    );
+  }
+}
+
+void main() {
+  runApp(PrevisaoApp());
+}
+
+class PrevisaoApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Previsão do Tempo',
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primarySwatch: Colors.blue,
+        cardColor: Colors.grey[850],
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.blueAccent,
+        ),
+      ),
+      home: PrevisaoPage(),
+    );
+  }
+}
+
+class PrevisaoPage extends StatefulWidget {
+  @override
+  _PrevisaoPageState createState() => _PrevisaoPageState();
+}
+
+class _PrevisaoPageState extends State<PrevisaoPage> {
+  late Future<List<Previsao>> previsoes;
+
+  @override
+  void initState() {
+    super.initState();
+    previsoes = fetchPrevisao();
+  }
+
+  Future<List<Previsao>> fetchPrevisao() async {
+    final response =
+        await http.get(Uri.parse('https://demo3520525.mockable.io/previsao'));
+
+    if (response.statusCode == 200) {
+      List<dynamic> data = jsonDecode(response.body);
+      return data.map((item) => Previsao.fromJson(item)).toList();
+    } else {
+      throw Exception('Falha ao carregar a previsão do tempo');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Previsão do Tempo'),
+        centerTitle: true,
+      ),
+      body: FutureBuilder<List<Previsao>>(
+        future: previsoes,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text(
+                'Erro: ${snapshot.error}',
+                style: TextStyle(color: Colors.red, fontSize: 16),
+              ),
+            );
+          } else if (snapshot.hasData) {
+            return ListView.builder(
+              padding: EdgeInsets.all(10),
+              itemCount: snapshot.data!.length,
+              itemBuilder: (context, index) {
+                final previsao = snapshot.data![index];
+                return Card(
+                  elevation: 4,
+                  margin: EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: Padding(
+                    padding: EdgeInsets.all(15),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Data: ${previsao.data}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(Icons.thermostat, color: Colors.blue),
+                            Text(
+                              'Temperatura: ${previsao.temperatura}°${previsao.unidade}',
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(Icons.water_drop, color: Colors.blue),
+                            Text('Umidade: ${previsao.umidade}%'),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(Icons.light_mode, color: Colors.yellow),
+                            Text('Luminosidade: ${previsao.luminosidade} lux'),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(Icons.air, color: Colors.grey),
+                            Text('Vento: ${previsao.vento} m/s'),
+                          ],
+                        ),
+                        SizedBox(height: 5),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Icon(Icons.cloud, color: Colors.blueAccent),
+                            Text('Chuva: ${previsao.chuva} mm'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          } else {
+            return Center(child: Text('Nenhuma previsão disponível.'));
+          }
+        },
+      ),
+    );
+  }
+}
